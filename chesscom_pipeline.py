@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import io
 import json
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ import pandas as pd
 import requests
 
 BASE = "https://api.chess.com/pub/player"
+USER_AGENT = "ben_chess_bot/0.1 (+https://github.com/benja/ben_chess_bot; contact: benja@example.com)"
 
 
 @dataclass(frozen=True)
@@ -55,11 +57,30 @@ def month_range(start: str, end: str) -> Iterable[str]:
         cur = cur.replace(year=year, month=month)
 
 
+def chesscom_get(url: str, retries: int = 4, backoff_sec: float = 1.5) -> dict:
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+    }
+    for attempt in range(retries + 1):
+        resp = requests.get(url, headers=headers, timeout=30)
+        if resp.status_code < 400:
+            return resp.json()
+
+        retry_after = resp.headers.get("Retry-After")
+        if resp.status_code in {403, 429, 500, 502, 503, 504} and attempt < retries:
+            wait = float(retry_after) if retry_after else backoff_sec * (2 ** attempt)
+            time.sleep(wait)
+            continue
+
+        resp.raise_for_status()
+
+    raise RuntimeError(f"Exceeded retries for url: {url}")
+
+
 def fetch_month(username: str, month: str) -> dict:
     url = f"{BASE}/{username}/games/{month}"
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    return chesscom_get(url)
 
 
 def save_json(path: Path, payload: dict) -> str:
@@ -69,7 +90,7 @@ def save_json(path: Path, payload: dict) -> str:
     return checksum
 
 
-def fetch_archives(paths: Paths, start: str, end: str) -> None:
+def fetch_archives(paths: Paths, start: str, end: str, pause_sec: float = 0.75) -> None:
     ensure_dirs(paths)
     manifest: list[dict] = []
     for month in month_range(start, end):
@@ -86,6 +107,7 @@ def fetch_archives(paths: Paths, start: str, end: str) -> None:
             }
         )
         print(f"Fetched {month}: {len(payload.get('games', []))} games")
+        time.sleep(pause_sec)
     (paths.manifests_dir / "fetch_manifest.json").write_text(json.dumps(manifest, indent=2))
 
 

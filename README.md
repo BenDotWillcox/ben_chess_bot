@@ -36,3 +36,11 @@ python chesscom_pipeline.py report --username BigBeennn
 - `data/processed/splits/random/{train,val,test}.parquet`
 - `data/manifests/fetch_manifest.json`
 - `data/manifests/dataset_stats.json`
+
+
+## Chess.com API etiquette
+
+- Script sends a descriptive `User-Agent` and `Accept: application/json` header.
+- Fetching uses retries with exponential backoff for transient `403/429/5xx` responses.
+- Calls are paced with a short delay between monthly requests.
+- Update the `USER_AGENT` contact in `chesscom_pipeline.py` before heavy usage.
