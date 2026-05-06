@@ -16,6 +16,10 @@ import pandas as pd
 import requests
 
 BASE = "https://api.chess.com/pub/player"
+HEADERS = {
+    "User-Agent": "ben_chess_bot/0.1 (personal data pipeline; contact: local-user)",
+    "Accept": "application/json",
+}
 
 
 @dataclass(frozen=True)
@@ -57,8 +61,11 @@ def month_range(start: str, end: str) -> Iterable[str]:
 
 def fetch_month(username: str, month: str) -> dict:
     url = f"{BASE}/{username}/games/{month}"
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
+    resp = requests.get(url, headers=HEADERS, timeout=30)
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as exc:
+        raise requests.HTTPError(f"{exc} while fetching {url}") from exc
     return resp.json()
 
 
