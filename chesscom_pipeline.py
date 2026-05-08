@@ -164,28 +164,74 @@ def build_moves(paths: Paths, games: pd.DataFrame) -> pd.DataFrame:
             continue
         board = game.board()
         ply = 0
+        uci_prefix: list[str] = []
+        san_prefix: list[str] = []
         for move in game.mainline_moves():
             ply += 1
             side = "white" if board.turn else "black"
+            san_move = board.san(move)
             rows.append(
                 {
                     "game_id": g["game_id"],
                     "date_utc": g["date_utc"],
                     "ply_index": ply,
+                    "ply_prefix_before": ply - 1,
                     "fullmove_number": board.fullmove_number,
                     "side_to_move": side,
                     "fen_before": board.fen(),
+                    "uci_prefix_before": " ".join(uci_prefix),
+                    "san_prefix_before": " ".join(san_prefix),
                     "uci_move": move.uci(),
-                    "san_move": board.san(move),
+                    "san_move": san_move,
                     "is_your_move": side == g["you_color"],
+                    "you_color": g["you_color"],
+                    "your_username": g["your_username"],
+                    "opponent_username": g["opponent_username"],
+                    "your_rating": g["your_rating"],
+                    "opponent_rating": g["opponent_rating"],
+                    "result": g["result"],
+                    "time_control_raw": g["time_control_raw"],
+                    "time_class": g["time_class"],
+                    "rated": g["rated"],
                 }
             )
             board.push(move)
+            uci_prefix.append(move.uci())
+            san_prefix.append(san_move)
     df = pd.DataFrame(rows)
     df.to_parquet(paths.interim_dir / "moves.parquet", index=False)
 
     train = df[df["is_your_move"]].rename(columns={"fen_before": "fen", "uci_move": "target_move_uci"})
-    train = train[["game_id", "date_utc", "ply_index", "fen", "target_move_uci"]].sort_values("date_utc")
+    train["move"] = train["target_move_uci"]
+    train["elo_self"] = train["your_rating"]
+    train["elo_oppo"] = train["opponent_rating"]
+    train = train[
+        [
+            "fen",
+            "move",
+            "elo_self",
+            "elo_oppo",
+            "game_id",
+            "date_utc",
+            "ply_index",
+            "ply_prefix_before",
+            "fullmove_number",
+            "uci_prefix_before",
+            "san_prefix_before",
+            "target_move_uci",
+            "san_move",
+            "you_color",
+            "side_to_move",
+            "your_username",
+            "opponent_username",
+            "your_rating",
+            "opponent_rating",
+            "result",
+            "time_control_raw",
+            "time_class",
+            "rated",
+        ]
+    ].sort_values("date_utc")
     train.to_parquet(paths.processed_dir / "train_samples.parquet", index=False)
     return df
 

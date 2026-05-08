@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BenBot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="board-zone" aria-label="Chess board">
+        <div class="board-header">
+          <div>
+            <h1>BenBot</h1>
+            <p class="subtitle">Ben's AI Chess Twin</p>
+            <p id="gameStatus">Ready</p>
+          </div>
+        </div>
+
+        <div id="board" class="board" aria-live="polite"></div>
+      </section>
+
+      <aside class="panel" aria-label="Game controls and move details">
+        <div class="control-grid color-control">
+          <label>
+            Play as
+            <select id="humanColor">
+              <option value="white">White</option>
+              <option value="black">Black</option>
+            </select>
+          </label>
+          <button id="newGameButton" type="button">New Game</button>
+        </div>
+
+        <section id="identityPanel" class="identity-panel" aria-live="polite">
+          <div>
+            <span>BenBot</span>
+            <strong id="identityStatus">Ready</strong>
+          </div>
+        </section>
+
+        <section id="promotionDialog" class="move-card promotion-dialog" hidden>
+          <h2>Promote To</h2>
+          <div class="promotion-options">
+            <button type="button" data-piece="q">Q</button>
+            <button type="button" data-piece="r">R</button>
+            <button type="button" data-piece="b">B</button>
+            <button type="button" data-piece="n">N</button>
+          </div>
+        </section>
+
+        <section class="metric-strip" aria-label="Game metadata">
+          <div>
+            <span>Turn</span>
+            <strong id="turnValue">-</strong>
+          </div>
+          <div>
+            <span>Bot</span>
+            <strong id="botColorValue">-</strong>
+          </div>
+          <div>
+            <span>Style</span>
+            <strong id="sourceValue">-</strong>
+          </div>
+        </section>
+
+        <section class="move-card">
+          <h2>BenBot Candidates</h2>
+          <ol id="candidateList" class="candidate-list"></ol>
+        </section>
+
+        <details class="move-card policy-settings">
+          <summary>Policy Settings</summary>
+          <dl class="detail-list policy-list">
+            <div>
+              <dt>Mode</dt>
+              <dd id="configMode">-</dd>
+            </div>
+            <div>
+              <dt>Top K</dt>
+              <dd id="configTopK">-</dd>
+            </div>
+            <div>
+              <dt>Temperature</dt>
+              <dd id="configTemperature">-</dd>
+            </div>
+            <div>
+              <dt>Strategy</dt>
+              <dd id="configStrategy">-</dd>
+            </div>
+            <div>
+              <dt>Alpha</dt>
+              <dd id="configAlpha">-</dd>
+            </div>
+            <div>
+              <dt>Min Count</dt>
+              <dd id="configMinCount">-</dd>
+            </div>
+            <div>
+              <dt>Stockfish Veto</dt>
+              <dd id="configStockfishVeto">-</dd>
+            </div>
+          </dl>
+        </details>
+      </aside>
+    </main>
+
+    <div id="gameOverDialog" class="game-over-dialog" hidden>
+      <section class="game-over-card" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+        <h2 id="gameOverTitle">Checkmate</h2>
+        <p id="gameOverMessage">Game over</p>
+        <div class="game-over-actions">
+          <button type="button" data-play-again="same">Same Color</button>
+          <button type="button" data-play-again="white">Play White</button>
+          <button type="button" data-play-again="black">Play Black</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
