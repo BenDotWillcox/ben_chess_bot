@@ -152,16 +152,16 @@ observational style proxy, not a causal measure of style preservation or playing
 
 ### Runtime reliability snapshot
 
-A fresh local single-worker run reached Maia2 + Stockfish readiness 4.3 seconds after process start.
-After excluding and recording one 847.44 ms first-inference warmup, five warm predictions averaged
-31.91 ms (31.78 ms p50, 33.23 ms p95). A 20-request workload at concurrency 8 completed at 30.37
+A fresh local single-worker run reached Maia2 + Stockfish readiness 3.5 seconds after process start.
+After excluding and recording one 921.62 ms first-inference warmup, five warm predictions averaged
+29.25 ms (29.06 ms p50, 30.20 ms p95). A 20-request workload at concurrency 8 completed at 33.18
 successful requests/second with 20 successes and no rejections, timeouts, or failures. API-process RSS
-was 601.05 MiB after dependency load and 660.46 MiB after the workload; these values explicitly
+was 601.86 MiB after dependency load and 660.81 MiB after the workload; these values explicitly
 exclude the Stockfish child process and are not total service memory.
 
-This run used a dirty worktree based on `e4161b4`, Windows AMD64 with 16 logical CPUs, and an elevated
-200-request rate-limit ceiling so it measured inference rather than the default public limit. Treat it
-as directional local evidence, not a Space SLA or a clean release baseline. See the
+This run used clean release revision `8e55c0c`, Windows AMD64 with 16 logical CPUs, and an elevated
+200-request rate-limit ceiling so it measured inference rather than the default public limit. It is a
+local release baseline, not a Hugging Face Space SLA. See the
 [aggregate runtime report](reports/runtime_benchmark/report.md),
 [machine-readable summary](reports/runtime_benchmark/summary.json), and
 [reproduction methodology](docs/runtime_reliability.md).
@@ -228,9 +228,9 @@ the [runtime benchmark](reports/runtime_benchmark/report.md) and
   but the bot can still choose severe blunders while degraded.
 - The safety evaluation covers 200 seeded held-out positions, one Stockfish build, and one finite
   engine budget. It does not establish a win-rate effect or general latency on deployment hardware.
-- The published runtime snapshot is a fresh-process local Windows measurement from the dirty
-  implementation worktree, not a Hugging Face Space SLA or a clean-release baseline. Its RSS scope
-  covers the API process only and excludes the Stockfish child process.
+- The published runtime snapshot is a fresh-process local Windows measurement from clean release
+  revision `8e55c0c`, not a Hugging Face Space SLA. Its RSS scope covers the API process only and
+  excludes the Stockfish child process.
 - Top-1 ECE was slightly worse after personalization (0.019949 to 0.022074), and per-bin estimates
   remain noisy at this dataset size; this is not evidence of universal calibration improvement.
 - Platform scheduling is outside the application process. Readiness cannot repair or observe a Space

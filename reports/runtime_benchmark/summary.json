@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "measured_at": "2026-07-10T12:57:35.045706+00:00",
+  "measured_at": "2026-07-10T13:42:44.253067+00:00",
   "target": "http://127.0.0.1:8877",
   "provenance": {
-    "git_revision": "e4161b46a381ca12f59a263583b5bcb6cc88794d",
-    "git_worktree_dirty": true,
+    "git_revision": "8e55c0cba06fcc35b0b7f7ba1799a7286c02c49a",
+    "git_worktree_dirty": false,
     "python_version": "3.11.3",
     "platform": "Windows-10-10.0.19045-SP0",
     "machine": "AMD64",
@@ -17,32 +17,33 @@
     "warmup_requests_excluded": 1,
     "concurrent_requests": 20,
     "concurrency": 8,
-    "client_timeout_seconds": 60.0
+    "client_timeout_seconds": 240.0
   },
   "cold_readiness": {
-    "client_poll_to_ready_ms": 3887.77,
-    "server_start_to_ready_seconds": 4.3,
+    "client_poll_to_ready_ms": 2622.69,
+    "readiness_poll_attempts": 10,
+    "server_start_to_ready_seconds": 3.5,
     "status": "ready",
     "dependencies": {
       "policy": {
         "status": "ready",
         "error": null,
-        "last_attempt": "2026-07-10T12:57:32Z",
-        "last_ready": "2026-07-10T12:57:32Z"
+        "last_attempt": "2026-07-10T13:42:42Z",
+        "last_ready": "2026-07-10T13:42:42Z"
       },
       "stockfish": {
         "status": "ready",
         "error": null,
-        "last_attempt": "2026-07-10T12:57:33Z",
-        "last_ready": "2026-07-10T12:57:33Z",
+        "last_attempt": "2026-07-10T13:42:42Z",
+        "last_ready": "2026-07-10T13:42:42Z",
         "enabled": true,
         "required": false,
         "available": true
       }
     },
     "process_after_load": {
-      "rss_mb": 601.05,
-      "peak_rss_mb": 601.06,
+      "rss_mb": 601.86,
+      "peak_rss_mb": 601.87,
       "source": "working_set",
       "scope": "api_process_only_excludes_stockfish_child"
     }
@@ -51,7 +52,7 @@
     {
       "outcome": "success",
       "status_code": 200,
-      "latency_ms": 847.44,
+      "latency_ms": 921.62,
       "error": null
     }
   ],
@@ -63,13 +64,13 @@
       "timeout": 0,
       "failure": 0
     },
-    "offered_throughput_requests_per_second": 31.33,
-    "successful_throughput_requests_per_second": 31.33,
+    "offered_throughput_requests_per_second": 34.19,
+    "successful_throughput_requests_per_second": 34.19,
     "success_latency_ms": {
-      "mean": 31.91,
-      "p50": 31.78,
-      "p95": 33.23,
-      "max": 33.23
+      "mean": 29.25,
+      "p50": 29.06,
+      "p95": 30.2,
+      "max": 30.2
     },
     "unsuccessful_request_rate": 0.0,
     "hard_failure_rate": 0.0,
@@ -83,21 +84,21 @@
       "timeout": 0,
       "failure": 0
     },
-    "offered_throughput_requests_per_second": 30.37,
-    "successful_throughput_requests_per_second": 30.37,
+    "offered_throughput_requests_per_second": 33.18,
+    "successful_throughput_requests_per_second": 33.18,
     "success_latency_ms": {
-      "mean": 216.99,
-      "p50": 258.76,
-      "p95": 265.29,
-      "max": 266.25
+      "mean": 199.26,
+      "p50": 232.93,
+      "p95": 242.44,
+      "max": 245.4
     },
     "unsuccessful_request_rate": 0.0,
     "hard_failure_rate": 0.0,
     "errors": []
   },
   "process_after_benchmark": {
-    "rss_mb": 660.46,
-    "peak_rss_mb": 660.46,
+    "rss_mb": 660.81,
+    "peak_rss_mb": 660.82,
     "source": "working_set",
     "scope": "api_process_only_excludes_stockfish_child"
   },
@@ -119,9 +120,12 @@
     "strategy": "fen",
     "alpha": 0.7,
     "min_count": 1,
-    "stockfish_enabled": true,
-    "stockfish_required": false,
     "stockfish_veto_cp": 400,
-    "stockfish_engine_time_seconds": 0.05
+    "stockfish_engine_time_seconds": 0.05,
+    "stockfish_engine_timeout_seconds": 10.0,
+    "policy_config_valid": true,
+    "stockfish_config_valid": true,
+    "stockfish_enabled": true,
+    "stockfish_required": false
   }
 }

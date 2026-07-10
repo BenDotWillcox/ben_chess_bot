@@ -6,20 +6,20 @@ Measured 2026-07-10 against a freshly started, local, single-worker Uvicorn proc
 
 | Metric | Result |
 | --- | ---: |
-| Server start to dependency-ready | 4.3 s |
-| Client poll-to-ready duration | 3,887.77 ms |
-| Excluded first-inference warmup | 847.44 ms |
-| Warm inference mean / p50 / p95 (5 requests) | 31.91 / 31.78 / 33.23 ms |
-| Concurrent successful throughput (20 requests, concurrency 8) | 30.37 requests/s |
-| Concurrent p50 / p95 latency | 258.76 / 265.29 ms |
+| Server start to dependency-ready | 3.5 s |
+| Client poll-to-ready duration (10 polls) | 2,622.69 ms |
+| Excluded first-inference warmup | 921.62 ms |
+| Warm inference mean / p50 / p95 (5 requests) | 29.25 / 29.06 / 30.20 ms |
+| Concurrent successful throughput (20 requests, concurrency 8) | 33.18 requests/s |
+| Concurrent p50 / p95 latency | 232.93 / 242.44 ms |
 | Concurrent successes / rejects / timeouts / failures | 20 / 0 / 0 / 0 |
-| API-process RSS after load / after workload | 601.05 / 660.46 MiB |
+| API-process RSS after load / after workload | 601.86 / 660.81 MiB |
 
 The RSS values are the Windows working set of the **API process only**. Stockfish is a child process and is excluded, so these numbers are not total service memory.
 
 ## Configuration and provenance
 
-- Base revision: `e4161b46a381ca12f59a263583b5bcb6cc88794d`; the worktree was dirty with the goal's uncommitted implementation, so this is directional evidence and must be rerun from a clean release commit for a release baseline.
+- Release revision: `8e55c0cba06fcc35b0b7f7ba1799a7286c02c49a`; the worktree was clean when the benchmark began.
 - Python 3.11.3 on Windows 10 AMD64; 16 logical CPUs; `cpu`, Maia2 `rapid`, FEN memory strategy, `alpha=0.7`, `min_count=1`.
 - Stockfish enabled but optional, 400-centipawn veto, 0.05-second analysis budget.
 - Inference executor: one worker plus four queued calls. Client concurrency was 8.
