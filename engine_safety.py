@@ -16,6 +16,7 @@ class SafetyDecision:
     vetoed: bool
     reason: str
     best_eval_cp: int | None
+    original_eval_cp: int | None
     selected_eval_cp: int | None
 
 
@@ -33,6 +34,7 @@ class StockfishBlunderVeto:
         engine_path: str,
         veto_cp: int = 400,
         engine_time: float = 0.05,
+        engine_timeout: float = 10.0,
         avoid_draw_when_winning_cp: int | None = None,
         avoid_shuffle_cp: int = 150,
     ) -> None:
@@ -41,7 +43,8 @@ class StockfishBlunderVeto:
         self.avoid_draw_when_winning_cp = avoid_draw_when_winning_cp or veto_cp
         self.avoid_shuffle_cp = avoid_shuffle_cp
         self.engine_time = engine_time
-        self.engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+        self.engine_timeout = engine_timeout
+        self.engine = chess.engine.SimpleEngine.popen_uci(engine_path, timeout=engine_timeout)
 
     def close(self) -> None:
         self.engine.quit()
@@ -165,6 +168,7 @@ class StockfishBlunderVeto:
                         vetoed=candidate.move != original.move,
                         reason=f"avoided_{original_shuffle}_{original.move}",
                         best_eval_cp=best_eval,
+                        original_eval_cp=original_eval,
                         selected_eval_cp=candidate_eval,
                     )
 
@@ -178,6 +182,7 @@ class StockfishBlunderVeto:
                         vetoed=candidate.move != original.move,
                         reason=f"avoided_{original_drawish}_{original.move}",
                         best_eval_cp=best_eval,
+                        original_eval_cp=original_eval,
                         selected_eval_cp=candidate_eval,
                     )
 
@@ -191,6 +196,7 @@ class StockfishBlunderVeto:
                         vetoed=True,
                         reason=f"stockfish_fallback_avoided_{original_drawish}_{original.move}",
                         best_eval_cp=max(best_eval, engine_eval),
+                        original_eval_cp=original_eval,
                         selected_eval_cp=engine_eval,
                     )
 
@@ -201,6 +207,7 @@ class StockfishBlunderVeto:
                 vetoed=False,
                 reason="within_threshold",
                 best_eval_cp=best_eval,
+                original_eval_cp=original_eval,
                 selected_eval_cp=original_eval,
             )
 
@@ -213,6 +220,7 @@ class StockfishBlunderVeto:
                     vetoed=candidate.move != original.move,
                     reason=f"vetoed_{original.move}_delta_{best_eval - original_eval}_cp",
                     best_eval_cp=best_eval,
+                    original_eval_cp=original_eval,
                     selected_eval_cp=candidate_eval,
                 )
 
@@ -223,5 +231,6 @@ class StockfishBlunderVeto:
             vetoed=best_candidate.move != original.move,
             reason=f"fallback_best_candidate_delta_{best_eval - original_eval}_cp",
             best_eval_cp=best_eval,
+            original_eval_cp=original_eval,
             selected_eval_cp=best_eval,
         )

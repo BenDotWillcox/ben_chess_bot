@@ -7,7 +7,7 @@ import hashlib
 import io
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -20,6 +20,8 @@ HEADERS = {
     "User-Agent": "ben_chess_bot/0.1 (personal data pipeline; contact: local-user)",
     "Accept": "application/json",
 }
+SPLIT_NAMES = ("train", "val", "test")
+SPLIT_RATIOS = (0.70, 0.15, 0.15)
 
 
 @dataclass(frozen=True)
@@ -87,7 +89,7 @@ def fetch_archives(paths: Paths, start: str, end: str) -> None:
             {
                 "month": month,
                 "file": str(out.relative_to(paths.root)),
-                "fetched_at_utc": datetime.utcnow().isoformat(),
+                "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
                 "checksum_sha256": checksum,
                 "game_count": len(payload.get("games", [])),
             }
@@ -148,7 +150,14 @@ def normalize_games(paths: Paths, rated_only: bool = True) -> pd.DataFrame:
                     "source_url": g.get("url"),
                 }
             )
-    df = pd.DataFrame(rows).drop_duplicates(subset=["game_id"]).sort_values("date_utc")
+    if not rows:
+        raise ValueError(f"No rated rapid games found for {paths.username} in {paths.raw_dir}")
+    df = (
+        pd.DataFrame(rows)
+        .drop_duplicates(subset=["game_id"])
+        .sort_values(["date_utc", "game_id"], kind="stable")
+        .reset_index(drop=True)
+    )
     df.to_parquet(paths.interim_dir / "games.parquet", index=False)
     return df
 
@@ -231,33 +240,120 @@ def build_moves(paths: Paths, games: pd.DataFrame) -> pd.DataFrame:
             "time_class",
             "rated",
         ]
-    ].sort_values("date_utc")
+    ].sort_values(["date_utc", "game_id", "ply_index"], kind="stable").reset_index(drop=True)
     train.to_parquet(paths.processed_dir / "train_samples.parquet", index=False)
     return df
+
+
+def _ordered_game_ids(train_samples: pd.DataFrame, split_name: str, seed: int) -> list[str]:
+    """Return a deterministic game ordering so one game can never cross splits."""
+    required = {"game_id", "date_utc"}
+    missing = sorted(required - set(train_samples.columns))
+    if missing:
+        raise ValueError(f"Cannot create game-level splits; missing columns: {missing}")
+    if train_samples.empty:
+        raise ValueError("Cannot split an empty sample table")
+
+    games = (
+        train_samples[["game_id", "date_utc"]]
+        .drop_duplicates(subset=["game_id"])
+        .sort_values(["date_utc", "game_id"], kind="stable")
+        .reset_index(drop=True)
+    )
+    if split_name == "random":
+        games = games.sample(frac=1, random_state=seed).reset_index(drop=True)
+    elif split_name != "chron":
+        raise ValueError(f"Unsupported split type: {split_name}")
+    return games["game_id"].astype(str).tolist()
+
+
+def _split_game_ids(game_ids: list[str]) -> dict[str, list[str]]:
+    n_games = len(game_ids)
+    if n_games < 3:
+        raise ValueError("At least three games are required for train/validation/test splits")
+    train_end = max(1, int(n_games * SPLIT_RATIOS[0]))
+    val_end = max(train_end + 1, int(n_games * sum(SPLIT_RATIOS[:2])))
+    val_end = min(val_end, n_games - 1)
+    return {
+        "train": game_ids[:train_end],
+        "val": game_ids[train_end:val_end],
+        "test": game_ids[val_end:],
+    }
+
+
+def _assert_split_integrity(splits: dict[str, pd.DataFrame], chronological: bool) -> None:
+    game_sets = {name: set(frame["game_id"].astype(str)) for name, frame in splits.items()}
+    for left_index, left in enumerate(SPLIT_NAMES):
+        for right in SPLIT_NAMES[left_index + 1 :]:
+            overlap = game_sets[left] & game_sets[right]
+            if overlap:
+                raise AssertionError(f"Games leaked between {left} and {right}: {sorted(overlap)[:3]}")
+    if chronological:
+        for left, right in zip(SPLIT_NAMES, SPLIT_NAMES[1:]):
+            left_max = pd.to_datetime(splits[left]["date_utc"], utc=True).max()
+            right_min = pd.to_datetime(splits[right]["date_utc"], utc=True).min()
+            if left_max > right_min:
+                raise AssertionError(f"Chronological boundary violated: {left} ends after {right} starts")
+
+
+def _frame_fingerprint(frame: pd.DataFrame) -> str:
+    """Hash stable sample identity fields without depending on parquet encoding."""
+    columns = [
+        column
+        for column in ("game_id", "date_utc", "ply_index", "fen", "move")
+        if column in frame.columns
+    ]
+    ordered = frame.sort_values(
+        [column for column in ("date_utc", "game_id", "ply_index") if column in frame.columns],
+        kind="stable",
+    )
+    digest = hashlib.sha256()
+    for row in ordered[columns].itertuples(index=False, name=None):
+        digest.update(json.dumps([str(value) for value in row], separators=(",", ":")).encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
 
 
 def write_splits(base_dir: Path, split_name: str, train_samples: pd.DataFrame, seed: int) -> dict:
     out_dir = base_dir / split_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    if split_name == "chron":
-        ordered = train_samples.sort_values("date_utc").reset_index(drop=True)
-    elif split_name == "random":
-        ordered = train_samples.sample(frac=1, random_state=seed).reset_index(drop=True)
-    else:
-        raise ValueError(f"Unsupported split type: {split_name}")
-
-    n = len(ordered)
-    t_end = int(n * 0.7)
-    v_end = int(n * 0.85)
-    splits = {
-        "train": ordered.iloc[:t_end],
-        "val": ordered.iloc[t_end:v_end],
-        "test": ordered.iloc[v_end:],
+    game_ids = _ordered_game_ids(train_samples, split_name, seed)
+    game_splits = _split_game_ids(game_ids)
+    split_lookup = {
+        game_id: name for name, ids in game_splits.items() for game_id in ids
     }
+    working = train_samples.copy()
+    working["_split"] = working["game_id"].astype(str).map(split_lookup)
+    if working["_split"].isna().any():
+        raise AssertionError("At least one sample was not assigned to a split")
+
+    splits = {}
+    for name in SPLIT_NAMES:
+        frame = working[working["_split"] == name].drop(columns="_split")
+        if split_name == "chron":
+            frame = frame.sort_values(["date_utc", "game_id", "ply_index"], kind="stable")
+        else:
+            # Game assignment is seeded; retain deterministic within-game ply order.
+            order = {game_id: index for index, game_id in enumerate(game_splits[name])}
+            frame = frame.assign(_game_order=frame["game_id"].astype(str).map(order)).sort_values(
+                ["_game_order", "ply_index"], kind="stable"
+            ).drop(columns="_game_order")
+        splits[name] = frame.reset_index(drop=True)
+
+    _assert_split_integrity(splits, chronological=split_name == "chron")
     for name, frame in splits.items():
         frame.to_parquet(out_dir / f"{name}.parquet", index=False)
-    return {k: int(len(v)) for k, v in splits.items()}
+    return {
+        name: {
+            "samples": int(len(frame)),
+            "games": int(frame["game_id"].nunique()),
+            "date_min": str(frame["date_utc"].min()),
+            "date_max": str(frame["date_utc"].max()),
+            "sha256": _frame_fingerprint(frame),
+        }
+        for name, frame in splits.items()
+    }
 
 
 def create_splits(paths: Paths, train_samples: pd.DataFrame, split_mode: str, seed: int) -> dict:
@@ -272,6 +368,7 @@ def create_splits(paths: Paths, train_samples: pd.DataFrame, split_mode: str, se
 
 def build_stats(paths: Paths, games: pd.DataFrame, moves: pd.DataFrame, split_sizes: dict, split_mode: str, seed: int) -> None:
     stats = {
+        "schema_version": 2,
         "games": int(len(games)),
         "moves": int(len(moves)),
         "your_moves": int(moves["is_your_move"].sum()) if len(moves) else 0,
@@ -281,6 +378,11 @@ def build_stats(paths: Paths, games: pd.DataFrame, moves: pd.DataFrame, split_si
         "split_mode": split_mode,
         "split_seed": seed,
         "split_sizes": split_sizes,
+        "split_unit": "game",
+        "split_ratios": dict(zip(SPLIT_NAMES, SPLIT_RATIOS)),
+        "dataset_sha256": _frame_fingerprint(
+            pd.read_parquet(paths.processed_dir / "train_samples.parquet")
+        ),
     }
     (paths.manifests_dir / "dataset_stats.json").write_text(json.dumps(stats, indent=2))
 

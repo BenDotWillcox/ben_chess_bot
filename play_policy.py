@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import random
 from pathlib import Path
 
 import chess
 
+from cli_policy import DEFAULT_ALPHA, DEFAULT_MIN_COUNT, DEFAULT_STRATEGY, select_candidate
 from engine_safety import StockfishBlunderVeto
 from game_state import PolicyGameState
 from personalized_policy import PersonalizedMaia2Policy, PolicyMove
@@ -55,6 +57,7 @@ def maybe_policy_move(
     top_k: int,
     temperature: float,
     safety: StockfishBlunderVeto | None,
+    rng: random.Random | None = None,
 ) -> None:
     if state.result_or_none() is not None:
         return
@@ -74,20 +77,9 @@ def maybe_policy_move(
         temperature=temperature,
     )
 
+    selected = select_candidate(candidates, mode=mode, rng=rng)
     if mode == "sample":
-        selected = policy.choose_move(
-            fen=state.fen,
-            elo_self=elo_self,
-            elo_oppo=elo_oppo,
-            you_color=bot_color,
-            uci_prefix_before=state.prefix,
-            mode=mode,
-            top_k=top_k,
-            temperature=temperature,
-        )
         candidates = [selected] + [candidate for candidate in candidates if candidate.move != selected.move]
-    else:
-        selected = candidates[0]
 
     if safety is not None:
         decision = safety.choose_safe_move(state.board, candidates)
@@ -105,24 +97,59 @@ def maybe_policy_move(
     print(f"Bot plays {san} ({selected.move}): {format_policy_move(selected)}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Play BenBot locally. The CLI defaults to deterministic argmax inspection; "
+            "use --mode sample --temperature 0.8 to mirror live selection."
+        )
+    )
     parser.add_argument("--bot-color", choices=["white", "black"], default="black")
     parser.add_argument("--elo-self", type=int, default=1650, help="Bot/player Elo used by Maia2.")
     parser.add_argument("--elo-oppo", type=int, default=1650, help="Opponent Elo used by Maia2.")
     parser.add_argument("--books", default="artifacts/personal_books.json")
     parser.add_argument("--model-type", choices=["rapid", "blitz"], default="rapid")
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu")
-    parser.add_argument("--strategy", choices=["fen", "prefix", "combined"], default="combined")
-    parser.add_argument("--alpha", type=float, default=0.5)
-    parser.add_argument("--min-count", type=int, default=1)
-    parser.add_argument("--mode", choices=["argmax", "sample"], default="argmax")
+    parser.add_argument(
+        "--strategy",
+        choices=["fen", "prefix", "combined"],
+        default=DEFAULT_STRATEGY,
+        help=f"Personal-memory strategy (validated default: {DEFAULT_STRATEGY}).",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=DEFAULT_ALPHA,
+        help=f"Personal-prior blend weight (validated default: {DEFAULT_ALPHA}).",
+    )
+    parser.add_argument(
+        "--min-count",
+        type=int,
+        default=DEFAULT_MIN_COUNT,
+        help=f"Minimum matching observations (validated default: {DEFAULT_MIN_COUNT}).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["argmax", "sample"],
+        default="argmax",
+        help="Selection mode (CLI default: deterministic argmax; live app: sample).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional reproducible sampling seed; omit for live human-like variation.",
+    )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--stockfish-path", default=None)
     parser.add_argument("--blunder-veto-cp", type=int, default=400)
     parser.add_argument("--engine-time", type=float, default=0.05)
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     policy = PersonalizedMaia2Policy.load(
         books_path=args.books,
@@ -133,6 +160,7 @@ def main() -> None:
         min_count=args.min_count,
     )
     state = PolicyGameState()
+    rng = random.Random(args.seed) if args.seed is not None else None
     human_color = "black" if args.bot_color == "white" else "white"
     safety = None
     if args.stockfish_path:
@@ -165,6 +193,7 @@ def main() -> None:
             args.top_k,
             args.temperature,
             safety,
+            rng,
         )
 
         while True:
@@ -217,6 +246,7 @@ def main() -> None:
                 args.top_k,
                 args.temperature,
                 safety,
+                rng,
             )
     finally:
         if safety is not None:

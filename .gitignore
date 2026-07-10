@@ -2,8 +2,22 @@
 data/
 maia2_models/
 __pycache__/
-artifacts/
-reports/
+artifacts/*
+!artifacts/personal_books.json
+reports/*
+!reports/heldout_evaluation/
+reports/heldout_evaluation/*
+!reports/heldout_evaluation/summary.json
+!reports/heldout_evaluation/report.md
+!reports/heldout_evaluation/data_quality.json
+!reports/safety_evaluation/
+reports/safety_evaluation/*
+!reports/safety_evaluation/summary.json
+!reports/safety_evaluation/report.md
+!reports/runtime_benchmark/
+reports/runtime_benchmark/*
+!reports/runtime_benchmark/summary.json
+!reports/runtime_benchmark/report.md
 
 .env
 .env.*
