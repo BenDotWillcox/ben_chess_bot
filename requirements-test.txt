@@ -1,0 +1,12 @@
+beautifulsoup4==4.14.3
+chess==1.10.0
+fastapi==0.115.6
+httpx==0.28.1
+numpy==1.26.4
+pandas==2.2.3
+playwright==1.51.0
+pyarrow==24.0.0
+pytest==8.3.4
+PyYAML==6.0.3
+requests==2.32.3
+uvicorn==0.34.0

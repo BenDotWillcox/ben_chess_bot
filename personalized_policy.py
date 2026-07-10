@@ -6,9 +6,7 @@ import math
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-
-from maia2 import inference, model
+from typing import Any, Callable
 
 
 def position_key(fen: str) -> str:
@@ -55,7 +53,14 @@ class PersonalizedMaia2Policy:
         strategy: str = "combined",
         alpha: float = 0.5,
         min_count: int = 1,
+        inference_each: Callable[..., tuple[dict[str, float], Any]] | None = None,
     ) -> None:
+        if strategy not in {"fen", "prefix", "combined"}:
+            raise ValueError(f"Unsupported strategy: {strategy}")
+        if not 0.0 <= alpha <= 1.0:
+            raise ValueError("alpha must be between 0 and 1")
+        if min_count < 1:
+            raise ValueError("min_count must be at least 1")
         self.maia_model = maia_model
         self.prepared = prepared
         self.fen_book = fen_book
@@ -63,6 +68,7 @@ class PersonalizedMaia2Policy:
         self.strategy = strategy
         self.alpha = alpha
         self.min_count = min_count
+        self.inference_each = inference_each
 
     @classmethod
     def load(
@@ -74,6 +80,10 @@ class PersonalizedMaia2Policy:
         alpha: float = 0.5,
         min_count: int = 1,
     ) -> "PersonalizedMaia2Policy":
+        # Maia2 and torch are intentionally lazy so book/metric utilities remain
+        # usable in lightweight offline tests.
+        from maia2 import inference, model
+
         books = json.loads(Path(books_path).read_text())
         maia_model = model.from_pretrained(model_type, device)
         prepared = inference.prepare()
@@ -85,6 +95,7 @@ class PersonalizedMaia2Policy:
             strategy=strategy,
             alpha=alpha,
             min_count=min_count,
+            inference_each=inference.inference_each,
         )
 
     def _select_counts(self, fen: str, you_color: str, uci_prefix_before: str) -> tuple[dict[str, int] | None, str]:
@@ -101,7 +112,7 @@ class PersonalizedMaia2Policy:
             if fen_counts and sum(fen_counts.values()) >= self.min_count:
                 return fen_counts, "fen"
             return None, "maia2"
-        raise ValueError(f"Unsupported strategy: {self.strategy}")
+        raise AssertionError(f"Validated strategy became invalid: {self.strategy}")
 
     def predict(
         self,
@@ -113,7 +124,12 @@ class PersonalizedMaia2Policy:
         top_n: int = 10,
         temperature: float = 1.0,
     ) -> list[PolicyMove]:
-        maia_probs, _ = inference.inference_each(self.maia_model, self.prepared, fen, elo_self, elo_oppo)
+        inference_each = self.inference_each
+        if inference_each is None:
+            from maia2 import inference
+
+            inference_each = inference.inference_each
+        maia_probs, _ = inference_each(self.maia_model, self.prepared, fen, elo_self, elo_oppo)
         counts, source = self._select_counts(fen, you_color, uci_prefix_before)
 
         count_total = sum(counts.values()) if counts else 0
@@ -131,7 +147,7 @@ class PersonalizedMaia2Policy:
             source = "maia2"
 
         blended = apply_temperature(blended, temperature)
-        sorted_moves = sorted(blended.items(), key=lambda item: item[1], reverse=True)[:top_n]
+        sorted_moves = sorted(blended.items(), key=lambda item: (-item[1], item[0]))[:top_n]
         return [
             PolicyMove(
                 move=move,
@@ -154,6 +170,7 @@ class PersonalizedMaia2Policy:
         mode: str = "argmax",
         top_k: int = 5,
         temperature: float = 1.0,
+        rng: random.Random | None = None,
     ) -> PolicyMove:
         moves = self.predict(
             fen=fen,
@@ -170,5 +187,6 @@ class PersonalizedMaia2Policy:
             return moves[0]
         if mode == "sample":
             weights = [move.probability for move in moves]
-            return random.choices(moves, weights=weights, k=1)[0]
+            chooser = rng if rng is not None else random
+            return chooser.choices(moves, weights=weights, k=1)[0]
         raise ValueError("mode must be 'argmax' or 'sample'")

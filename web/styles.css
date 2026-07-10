@@ -16,6 +16,8 @@
   --selected-move: #2f7d4f;
   --selected-move-soft: rgba(47, 125, 79, 0.18);
   --danger: #9d3d32;
+  --warning: #8a5a12;
+  --warning-soft: #fff4d8;
 }
 
 * {
@@ -89,6 +91,78 @@ h2 {
   margin-top: 6px;
   color: var(--muted);
   min-height: 24px;
+}
+
+.service-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.service-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #8a938e;
+}
+
+.service-status--ready .service-status__dot {
+  background: var(--selected-move);
+}
+
+.service-status--degraded {
+  border-color: #dfbd78;
+  color: var(--warning);
+}
+
+.service-status--degraded .service-status__dot {
+  background: #ca8218;
+}
+
+.service-status--unavailable {
+  border-color: #d8aaa5;
+  color: var(--danger);
+}
+
+.service-status--unavailable .service-status__dot {
+  background: var(--danger);
+}
+
+.service-status--checking .service-status__dot,
+.service-status--starting .service-status__dot {
+  animation: status-pulse 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes status-pulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.degraded-notice {
+  display: grid;
+  gap: 3px;
+  margin: -4px 0 14px;
+  border: 1px solid #dfbd78;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 button {
@@ -216,11 +290,36 @@ button:hover {
 .control-grid,
 .metric-strip,
 .move-card,
-.identity-panel {
+.identity-panel,
+.implementation-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
+}
+
+.implementation-card {
+  display: grid;
+  gap: 8px;
+}
+
+.implementation-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.project-links a {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 750;
+  text-underline-offset: 3px;
 }
 
 .control-grid {

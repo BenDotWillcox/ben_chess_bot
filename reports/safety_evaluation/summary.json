@@ -1,0 +1,182 @@
+{
+  "added_latency_ms": {
+    "max": 322.7329,
+    "mean": 286.066439,
+    "p50": 310.526,
+    "p90": 314.3957,
+    "p95": 315.334065,
+    "samples": 200
+  },
+  "attempted_samples": 200,
+  "caveats": [
+    "Safety results apply only to the recorded seeded held-out subset and engine time budget.",
+    "Seed 42 fixes subset selection and policy sampling, not finite-time Stockfish output.",
+    "Centipawn values, veto decisions, and latency are timing- and hardware-dependent and can vary across reruns.",
+    "Ben-likeness is held-out move agreement, not a causal style or win-rate estimate.",
+    "Draw/shuffle rates can be sparse; the report retains the raw numerator and denominator.",
+    "Mate scores use python-chess's 100,000-centipawn sentinel; mate-scale and non-mate distributions are reported separately."
+  ],
+  "centipawn_loss": {
+    "after_safety": {
+      "max": 320.0,
+      "mean": 32.145,
+      "p50": 0.0,
+      "p90": 122.0,
+      "p95": 171.05,
+      "samples": 200
+    },
+    "avoided": {
+      "max": 100443.0,
+      "mean": 2498.57,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 2.9,
+      "samples": 200
+    },
+    "avoided_on_positive_samples": {
+      "max": 100443.0,
+      "mean": 45428.727273,
+      "p50": 645.0,
+      "p90": 99993.0,
+      "p95": 100218.0,
+      "samples": 11
+    },
+    "avoided_on_vetoed_samples": {
+      "max": 100443.0,
+      "mean": 35693.857143,
+      "p50": 290.5,
+      "p90": 99936.6,
+      "p95": 100150.5,
+      "samples": 14
+    },
+    "before_safety": {
+      "max": 100443.0,
+      "mean": 2530.715,
+      "p50": 1.0,
+      "p90": 153.3,
+      "p95": 249.6,
+      "samples": 200
+    },
+    "definition": "loss versus the best policy candidate in the same Stockfish evaluation pass",
+    "mate_scale_after_samples": 0,
+    "mate_scale_before_samples": 5,
+    "mate_scale_threshold": 90000.0,
+    "non_mate_after_safety": {
+      "max": 320.0,
+      "mean": 31.871795,
+      "p50": 0.0,
+      "p90": 118.2,
+      "p95": 170.3,
+      "samples": 195
+    },
+    "non_mate_avoided": {
+      "max": 645.0,
+      "mean": 6.779487,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "samples": 195
+    },
+    "non_mate_before_safety": {
+      "max": 650.0,
+      "mean": 38.651282,
+      "p50": 0.0,
+      "p90": 131.6,
+      "p95": 173.5,
+      "samples": 195
+    },
+    "non_mate_positive_avoided": {
+      "max": 645.0,
+      "mean": 220.666667,
+      "p50": 77.0,
+      "p90": 565.0,
+      "p95": 605.0,
+      "samples": 6
+    },
+    "non_mate_samples": 195,
+    "positive_avoidance_samples": 11
+  },
+  "configuration": {
+    "avoid_draw_when_winning_cp": 400,
+    "avoid_shuffle_cp": 150,
+    "determinism_scope": "The seed fixes held-out subset selection and policy sampling only; finite-time Stockfish scores, vetoes, and latency remain timing- and hardware-dependent.",
+    "deterministic_evaluation": false,
+    "engine_output_deterministic": false,
+    "engine_time_seconds": 0.05,
+    "mode": "sample",
+    "requested_limit": 200,
+    "runtime_provenance": {
+      "logical_cpu_count": 16,
+      "machine": "AMD64",
+      "packages": {
+        "maia2": "0.9",
+        "pandas": "2.2.3",
+        "python-chess": "1.10.0",
+        "torch": "2.4.0"
+      },
+      "platform": "Windows-10-10.0.19045-SP0",
+      "processor": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+      "python_version": "3.11.3"
+    },
+    "seed": 42,
+    "seeded_policy_sampling_reproducible": true,
+    "seeded_subset_selection_reproducible": true,
+    "stockfish_engine_id": {
+      "author": "the Stockfish developers (see AUTHORS file)",
+      "name": "Stockfish 18"
+    },
+    "stockfish_executable": "stockfish-windows-x86-64-avx2.exe",
+    "stockfish_executable_bytes": 114007552,
+    "stockfish_executable_sha256": "c86215fa1977d53b82ed854540a4c7b025be4cd042276c85ba3de53fb9118911",
+    "subset_selection": "seeded uniform sample without replacement",
+    "temperature": 0.8,
+    "top_k": 5,
+    "veto_cp": 400
+  },
+  "data_quality_evidence": {
+    "full_test_samples": 3638,
+    "path": "reports\\heldout_evaluation\\data_quality.json",
+    "prefix_reconstruction_coverage": 1.0,
+    "prefix_reconstruction_mismatches": 0
+  },
+  "draw_shuffle_avoidance": {
+    "at_risk_samples": 12,
+    "avoidance_rate": 0.666667,
+    "avoided_samples": 8
+  },
+  "failed_samples": 0,
+  "failure_rate": 0.0,
+  "personalization_impact": {
+    "ben_match_after_rate": 0.525,
+    "ben_match_after_samples": 105,
+    "ben_match_before_rate": 0.52,
+    "ben_match_before_samples": 104,
+    "ben_match_rate_change": 0.005,
+    "definition": "agreement with Ben's actual held-out move before versus after safety",
+    "memory_choice_preserved_rate": 1.0,
+    "memory_covered_samples": 19,
+    "original_choice_preserved_rate": 0.93
+  },
+  "schema_version": 1,
+  "successful_samples": 200,
+  "veto": {
+    "reasons": {
+      "avoided_undo_last_own_move_c3b3": 1,
+      "avoided_undo_last_own_move_c6g2": 1,
+      "avoided_undo_last_own_move_d5e5": 1,
+      "avoided_undo_last_own_move_f2e1": 1,
+      "avoided_undo_last_own_move_f2e2": 1,
+      "avoided_undo_last_own_move_g5h6": 1,
+      "avoided_undo_last_own_move_g6f4": 1,
+      "avoided_undo_last_own_move_h6h5": 1,
+      "vetoed_a3a2_delta_99019_cp": 1,
+      "vetoed_c1c7_delta_99132_cp": 1,
+      "vetoed_c4a2_delta_100019_cp": 1,
+      "vetoed_c5f8_delta_416_cp": 1,
+      "vetoed_d4d3_delta_650_cp": 1,
+      "vetoed_f8f7_delta_485_cp": 1
+    },
+    "veto_rate": 0.07,
+    "vetoed_samples": 14
+  }
+}

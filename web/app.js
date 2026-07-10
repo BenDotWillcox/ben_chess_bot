@@ -15,11 +15,13 @@ const pieceGlyphs = {
 
 const state = {
   game: null,
+  readiness: null,
   selected: null,
   pendingPromotion: null,
   animatingMove: null,
   busy: false,
   requestId: 0,
+  readinessPromise: null,
 };
 
 const policyOptions = {
@@ -35,6 +37,9 @@ const els = {
   humanColor: document.querySelector("#humanColor"),
   identityPanel: document.querySelector("#identityPanel"),
   identityStatus: document.querySelector("#identityStatus"),
+  serviceStatus: document.querySelector("#serviceStatus"),
+  serviceStatusText: document.querySelector("#serviceStatusText"),
+  degradedNotice: document.querySelector("#degradedNotice"),
   turnValue: document.querySelector("#turnValue"),
   botColorValue: document.querySelector("#botColorValue"),
   sourceValue: document.querySelector("#sourceValue"),
@@ -77,6 +82,97 @@ function delay(ms) {
 function setIdentity(status, isThinking = false) {
   els.identityStatus.textContent = status;
   els.identityPanel.classList.toggle("thinking", isThinking);
+}
+
+function normalizeReadiness(payload) {
+  const dependencies = payload?.dependencies || {};
+  const policy = dependencies.policy || {};
+  const stockfish = dependencies.stockfish || {};
+  const policyReady = policy.status === "ready" || payload?.policy_loaded === true;
+  const stockfishEnabled = stockfish.enabled ?? payload?.stockfish_enabled ?? false;
+  const stockfishReady = !stockfishEnabled || stockfish.status === "ready" || payload?.stockfish_ready === true;
+  let status = payload?.status;
+
+  if (!status) {
+    if (payload?.ready === false || (!policyReady && payload?.ok === false)) {
+      status = "unavailable";
+    } else if (policyReady && stockfishEnabled && !stockfishReady) {
+      status = "degraded";
+    } else if (payload?.ready === true || payload?.ok === true || policyReady) {
+      status = "ready";
+    } else {
+      status = "unavailable";
+    }
+  }
+
+  return {
+    status,
+    policyReady,
+    stockfishEnabled,
+    stockfishReady,
+    error: policy.error || stockfish.error || payload?.detail || null,
+  };
+}
+
+function renderReadiness(readiness) {
+  state.readiness = readiness;
+  const status = readiness?.status || "checking";
+  els.serviceStatus.className = `service-status service-status--${status}`;
+
+  if (status === "ready") {
+    els.serviceStatusText.textContent = readiness.stockfishEnabled ? "Ready · Maia2 + Stockfish" : "Ready · Maia2";
+  } else if (status === "degraded") {
+    els.serviceStatusText.textContent = "Ready · Safety degraded";
+  } else if (status === "unavailable") {
+    els.serviceStatusText.textContent = "Model unavailable";
+  } else {
+    els.serviceStatusText.textContent = "Checking service";
+  }
+
+  const stockfishDegraded = status === "degraded" && readiness.stockfishEnabled && !readiness.stockfishReady;
+  els.degradedNotice.hidden = !stockfishDegraded;
+  els.serviceStatus.title = readiness?.error || "";
+}
+
+async function refreshReadiness({ quiet = false } = {}) {
+  if (state.readinessPromise) {
+    return state.readinessPromise;
+  }
+  if (!quiet) {
+    renderReadiness({ status: "checking", stockfishEnabled: false, stockfishReady: false });
+  }
+
+  state.readinessPromise = (async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch("/ready", {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      const payload = await response.json();
+      const readiness = normalizeReadiness(payload);
+      if (!response.ok && !["starting", "unavailable"].includes(readiness.status)) {
+        throw new Error(payload.detail || `${response.status} ${response.statusText}`);
+      }
+      renderReadiness(readiness);
+      return readiness;
+    } catch (error) {
+      const readiness = {
+        status: "unavailable",
+        policyReady: false,
+        stockfishEnabled: false,
+        stockfishReady: false,
+        error: error.name === "AbortError" ? "Readiness check timed out" : error.message,
+      };
+      renderReadiness(readiness);
+      return readiness;
+    } finally {
+      window.clearTimeout(timeout);
+      state.readinessPromise = null;
+    }
+  })();
+  return state.readinessPromise;
 }
 
 async function api(path, options = {}) {
@@ -200,15 +296,18 @@ function isHumanTurn() {
 
 function sourceLabel(source, safety) {
   if (safety?.vetoed || source === "stockfish_veto") {
-    return "Safety";
+    return "Stockfish veto";
   }
-  if (source === "prefix" || source === "fen") {
-    return "Memory";
+  if (source === "prefix") {
+    return "Prefix memory";
+  }
+  if (source === "fen") {
+    return "Position memory";
   }
   if (source === "maia2") {
-    return "Sample";
+    return "Maia2";
   }
-  return "Style";
+  return "Unknown";
 }
 
 function selectedMoveLabel(move) {
@@ -222,13 +321,16 @@ function identityForMove(botMove) {
   }
   const move = selectedMoveLabel(selected);
   if (botMove.safety?.vetoed || selected.source === "stockfish_veto") {
-    return `BenBot used safety on ${move}`;
+    return `Stockfish veto selected ${move}`;
   }
-  if (selected.source === "prefix" || selected.source === "fen") {
-    return `BenBot played ${move} from opening memory`;
+  if (selected.source === "prefix") {
+    return `BenBot played ${move} from prefix memory`;
+  }
+  if (selected.source === "fen") {
+    return `BenBot played ${move} from position memory`;
   }
   if (policyOptions.mode === "sample") {
-    return `BenBot sampled ${move}`;
+    return `BenBot sampled ${move} from Maia2`;
   }
   return `BenBot played ${move}`;
 }
@@ -313,10 +415,24 @@ function renderDetails() {
   els.configStrategy.textContent = config.strategy || "-";
   els.configAlpha.textContent = config.alpha ?? "-";
   els.configMinCount.textContent = config.min_count ?? "-";
-  els.configStockfishVeto.textContent =
-    config.stockfish_veto_cp === undefined
-      ? "-"
-      : `${config.stockfish_veto_cp}cp${config.stockfish_enabled ? "" : " (off)"}`;
+  if (!config.stockfish_enabled || config.stockfish_status === "disabled") {
+    els.configStockfishVeto.textContent = "Off";
+  } else if (config.stockfish_veto_cp === undefined) {
+    els.configStockfishVeto.textContent = "-";
+  } else {
+    const suffix = config.stockfish_status && config.stockfish_status !== "ready" ? ` (${config.stockfish_status})` : "";
+    els.configStockfishVeto.textContent = `${config.stockfish_veto_cp}cp${suffix}`;
+  }
+
+  if (config.stockfish_enabled && config.stockfish_status && config.stockfish_status !== "ready") {
+    renderReadiness({
+      status: "degraded",
+      policyReady: true,
+      stockfishEnabled: true,
+      stockfishReady: false,
+      error: config.stockfish_error || null,
+    });
+  }
 
   els.candidateList.innerHTML = "";
   const candidates = state.game.bot_move?.candidates || [];
@@ -398,6 +514,8 @@ async function startGame() {
     return;
   } catch (error) {
     setStatus(error.message, true);
+    setIdentity("Service unavailable");
+    await refreshReadiness({ quiet: true });
   } finally {
     setBusy(false);
     renderBoard();
@@ -544,4 +662,19 @@ els.gameOverDialog.addEventListener("click", (event) => {
 });
 els.humanColor.addEventListener("change", startGame);
 
-startGame();
+async function initialize() {
+  let readiness = await refreshReadiness();
+  for (let attempt = 0; readiness.status === "starting" && attempt < 120; attempt += 1) {
+    await delay(1_500);
+    readiness = await refreshReadiness({ quiet: true });
+  }
+  if (readiness.status === "ready" || readiness.status === "degraded") {
+    await startGame();
+  } else {
+    setStatus("The model could not be loaded. Try again when service status recovers.", true);
+    setIdentity("Service unavailable");
+  }
+  window.setInterval(() => refreshReadiness({ quiet: true }), 60_000);
+}
+
+initialize();

@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from dataclasses import asdict
 
+from cli_policy import DEFAULT_ALPHA, DEFAULT_MIN_COUNT, DEFAULT_STRATEGY, select_candidate
 from personalized_policy import PersonalizedMaia2Policy
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Inspect one BenBot distribution. The CLI defaults to deterministic argmax; "
+            "use --mode sample --temperature 0.8 --top-n 5 to mirror live selection."
+        )
+    )
     parser.add_argument("--fen", required=True)
     parser.add_argument("--elo-self", type=int, default=1650)
     parser.add_argument("--elo-oppo", type=int, default=1650)
@@ -19,13 +26,43 @@ def main() -> None:
     parser.add_argument("--books", default="artifacts/personal_books.json")
     parser.add_argument("--model-type", choices=["rapid", "blitz"], default="rapid")
     parser.add_argument("--device", choices=["cpu", "gpu"], default="cpu")
-    parser.add_argument("--strategy", choices=["fen", "prefix", "combined"], default="combined")
-    parser.add_argument("--alpha", type=float, default=0.5)
-    parser.add_argument("--min-count", type=int, default=1)
+    parser.add_argument(
+        "--strategy",
+        choices=["fen", "prefix", "combined"],
+        default=DEFAULT_STRATEGY,
+        help=f"Personal-memory strategy (validated default: {DEFAULT_STRATEGY}).",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=DEFAULT_ALPHA,
+        help=f"Personal-prior blend weight (validated default: {DEFAULT_ALPHA}).",
+    )
+    parser.add_argument(
+        "--min-count",
+        type=int,
+        default=DEFAULT_MIN_COUNT,
+        help=f"Minimum matching observations (validated default: {DEFAULT_MIN_COUNT}).",
+    )
     parser.add_argument("--top-n", type=int, default=10)
     parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--mode", choices=["argmax", "sample"], default="argmax")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--mode",
+        choices=["argmax", "sample"],
+        default="argmax",
+        help="Selection mode (CLI default: deterministic argmax; live app: sample).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional reproducible sampling seed; omit for live variation.",
+    )
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     policy = PersonalizedMaia2Policy.load(
         books_path=args.books,
@@ -44,15 +81,10 @@ def main() -> None:
         top_n=args.top_n,
         temperature=args.temperature,
     )
-    selected = policy.choose_move(
-        fen=args.fen,
-        elo_self=args.elo_self,
-        elo_oppo=args.elo_oppo,
-        you_color=args.you_color,
-        uci_prefix_before=args.prefix,
+    selected = select_candidate(
+        moves,
         mode=args.mode,
-        top_k=args.top_n,
-        temperature=args.temperature,
+        rng=random.Random(args.seed) if args.seed is not None else None,
     )
     print(
         json.dumps(
@@ -66,6 +98,7 @@ def main() -> None:
                     "min_count": args.min_count,
                     "mode": args.mode,
                     "temperature": args.temperature,
+                    "seed": args.seed,
                 },
             },
             indent=2,

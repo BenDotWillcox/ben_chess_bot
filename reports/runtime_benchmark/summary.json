@@ -1,0 +1,127 @@
+{
+  "schema_version": 2,
+  "measured_at": "2026-07-10T12:57:35.045706+00:00",
+  "target": "http://127.0.0.1:8877",
+  "provenance": {
+    "git_revision": "e4161b46a381ca12f59a263583b5bcb6cc88794d",
+    "git_worktree_dirty": true,
+    "python_version": "3.11.3",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+    "cpu_count": 16
+  },
+  "methodology": {
+    "cold_start_assumption": "Cold readiness is valid only when the target process was freshly started before this command.",
+    "warm_requests": 5,
+    "warmup_requests_excluded": 1,
+    "concurrent_requests": 20,
+    "concurrency": 8,
+    "client_timeout_seconds": 60.0
+  },
+  "cold_readiness": {
+    "client_poll_to_ready_ms": 3887.77,
+    "server_start_to_ready_seconds": 4.3,
+    "status": "ready",
+    "dependencies": {
+      "policy": {
+        "status": "ready",
+        "error": null,
+        "last_attempt": "2026-07-10T12:57:32Z",
+        "last_ready": "2026-07-10T12:57:32Z"
+      },
+      "stockfish": {
+        "status": "ready",
+        "error": null,
+        "last_attempt": "2026-07-10T12:57:33Z",
+        "last_ready": "2026-07-10T12:57:33Z",
+        "enabled": true,
+        "required": false,
+        "available": true
+      }
+    },
+    "process_after_load": {
+      "rss_mb": 601.05,
+      "peak_rss_mb": 601.06,
+      "source": "working_set",
+      "scope": "api_process_only_excludes_stockfish_child"
+    }
+  },
+  "warmup_inference_excluded": [
+    {
+      "outcome": "success",
+      "status_code": 200,
+      "latency_ms": 847.44,
+      "error": null
+    }
+  ],
+  "warm_inference": {
+    "requests": 5,
+    "counts": {
+      "success": 5,
+      "rejected": 0,
+      "timeout": 0,
+      "failure": 0
+    },
+    "offered_throughput_requests_per_second": 31.33,
+    "successful_throughput_requests_per_second": 31.33,
+    "success_latency_ms": {
+      "mean": 31.91,
+      "p50": 31.78,
+      "p95": 33.23,
+      "max": 33.23
+    },
+    "unsuccessful_request_rate": 0.0,
+    "hard_failure_rate": 0.0,
+    "errors": []
+  },
+  "bounded_concurrency": {
+    "requests": 20,
+    "counts": {
+      "success": 20,
+      "rejected": 0,
+      "timeout": 0,
+      "failure": 0
+    },
+    "offered_throughput_requests_per_second": 30.37,
+    "successful_throughput_requests_per_second": 30.37,
+    "success_latency_ms": {
+      "mean": 216.99,
+      "p50": 258.76,
+      "p95": 265.29,
+      "max": 266.25
+    },
+    "unsuccessful_request_rate": 0.0,
+    "hard_failure_rate": 0.0,
+    "errors": []
+  },
+  "process_after_benchmark": {
+    "rss_mb": 660.46,
+    "peak_rss_mb": 660.46,
+    "source": "working_set",
+    "scope": "api_process_only_excludes_stockfish_child"
+  },
+  "runtime_limits": {
+    "rate_limit_requests": 200,
+    "rate_limit_window_seconds": 60.0,
+    "inference_timeout_seconds": 30.0,
+    "safety_timeout_seconds": 3.0
+  },
+  "inference_capacity": {
+    "active": 0,
+    "capacity": 5,
+    "workers": 1,
+    "queue_capacity": 4
+  },
+  "service_configuration": {
+    "model_type": "rapid",
+    "device": "cpu",
+    "strategy": "fen",
+    "alpha": 0.7,
+    "min_count": 1,
+    "stockfish_enabled": true,
+    "stockfish_required": false,
+    "stockfish_veto_cp": 400,
+    "stockfish_engine_time_seconds": 0.05
+  }
+}

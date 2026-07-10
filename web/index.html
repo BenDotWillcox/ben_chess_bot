@@ -12,9 +12,18 @@
         <div class="board-header">
           <div>
             <h1>BenBot</h1>
-            <p class="subtitle">Ben's AI Chess Twin</p>
+            <p class="subtitle">Pretrained Maia2 + Ben's count-based move memory</p>
             <p id="gameStatus">Ready</p>
           </div>
+          <div id="serviceStatus" class="service-status service-status--checking" role="status" aria-live="polite">
+            <span class="service-status__dot" aria-hidden="true"></span>
+            <span id="serviceStatusText">Checking service</span>
+          </div>
+        </div>
+
+        <div id="degradedNotice" class="degraded-notice" role="alert" hidden>
+          <strong>Stockfish safety is unavailable.</strong>
+          <span>BenBot is still playable, but moves are not being checked by the optional blunder veto.</span>
         </div>
 
         <div id="board" class="board" aria-live="polite"></div>
@@ -39,6 +48,18 @@
           </div>
         </section>
 
+        <section class="implementation-card" aria-labelledby="implementationTitle">
+          <h2 id="implementationTitle">How this bot works</h2>
+          <p>
+            Maia2 supplies human-move probabilities. The validated policy blends in exact-position
+            move counts from Ben's historical rapid games; this is not a fine-tuned neural model.
+          </p>
+          <nav class="project-links" aria-label="BenBot project links">
+            <a href="https://huggingface.co/spaces/Bwillcox/BenBot" target="_blank" rel="noreferrer">Space</a>
+            <a href="https://huggingface.co/spaces/Bwillcox/BenBot/tree/main" target="_blank" rel="noreferrer">Public files</a>
+          </nav>
+        </section>
+
         <section id="promotionDialog" class="move-card promotion-dialog" hidden>
           <h2>Promote To</h2>
           <div class="promotion-options">
@@ -59,7 +80,7 @@
             <strong id="botColorValue">-</strong>
           </div>
           <div>
-            <span>Style</span>
+            <span>Source</span>
             <strong id="sourceValue">-</strong>
           </div>
         </section>
